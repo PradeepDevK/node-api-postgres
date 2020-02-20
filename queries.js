@@ -10,7 +10,7 @@ global.pool = new Pool({
 
 //Users
 const getUsers = (request, response) => {
-    pool.query('SELECT * FROM users ORDER BY id ASC', (error, results) => {
+    pool.query('SELECT *, (SELECT array_to_json(array_agg(row_to_json(p1.*))) FROM posts AS p1 WHERE p1.user_id = users.id ) AS posts, (SELECT array_to_json(array_agg(row_to_json(comments.*))) FROM comments INNER JOIN posts AS p2 ON (comments.post_id = p2.id AND p2.user_id = users.id) ) AS comments FROM users ORDER BY users.id ASC', (error, results) => {
         if (error) {
             throw error
         }
@@ -21,7 +21,7 @@ const getUsers = (request, response) => {
 const getUserById = (request, response) => {
     const id = parseInt(request.params.id)
 
-    pool.query('SELECT * FROM users WHERE id = $1', [id], (error, results) => {
+    pool.query('SELECT *, (SELECT array_to_json(array_agg(row_to_json(p1.*))) FROM posts AS p1 WHERE p1.user_id = users.id ) AS posts, (SELECT array_to_json(array_agg(row_to_json(comments.*))) FROM comments INNER JOIN posts AS p2 ON (comments.post_id = p2.id AND p2.user_id = users.id) ) AS comments FROM users WHERE id = $1', [id], (error, results) => {
         if (error) {
             throw error
         }
@@ -76,7 +76,7 @@ const deleteUser = (request, response) => {
 
 //Posts
 const getPosts = (request, response) => {
-    pool.query('SELECT * FROM posts ORDER BY id ASC', (error, results) => {
+    pool.query('SELECT *, row_to_json((SELECT userData FROM (SELECT users.* FROM users where users.id = posts.user_id) AS userData)) AS user, (SELECT array_to_json(array_agg(row_to_json(comments.*))) FROM comments where comments.post_id = posts.id ) AS comments  FROM posts group by posts.id', (error, results) => {
         if (error) {
             throw error
         }
@@ -145,7 +145,7 @@ const deletePost = (request, response) => {
 
 //comment
 const getComments = (request, response) => {
-    pool.query('SELECT * FROM comments ORDER BY id ASC', (error, results) => {
+    pool.query('SELECT *, row_to_json((SELECT postData FROM (SELECT posts.* FROM posts where posts.id = comments.post_id) AS postData)) AS post, row_to_json((SELECT userData FROM (SELECT users.* FROM users where users.id = comments.user_id) AS userData)) AS user FROM comments ORDER BY id ASC', (error, results) => {
         if (error) {
             throw error
         }
